@@ -3,22 +3,48 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0D1211">
+<meta name="theme-color" content="#FFFFFF">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="RIYADE">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icone-180.png">
 <link rel="icon" href="icone-180.png">
 <title>RIYADE · Suivi des bons</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #FFFFFF; }
+  html, body { margin: 0; height: 100%; background: #F2F5F7; }
+  @media (prefers-color-scheme: dark) { html, body { background: #111616; } }
   iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
 </style>
 </head>
 <body>
 <!-- Page de lancement : l'icône de l'écran d'accueil ouvre l'appli Apps Script en plein écran, comme Speedy.
-     Remplacez l'adresse ci-dessous par celle du déploiement (elle finit par /exec). -->
-<iframe src="https://script.google.com/macros/s/AKfycbxhqsQh2TN1iFdpFFgH_YgD9qQRtsrkwJH9Hdnmj9kviV8bCFz3S18SqHecgZ8z_wig/exec?lanceur=1" allow="camera; clipboard-write"></iframe>
+     Elle garde aussi la clé de l'appareil : l'iPhone efface la mémoire de l'appli Google quand on la ferme,
+     mais pas celle de cette page, donc le code de confirmation par e-mail n'est demandé qu'une fois par téléphone. -->
+<iframe id="appli" allow="camera; clipboard-write; publickey-credentials-get"></iframe>
+<script>
+  // Adresse du déploiement Apps Script (elle finit par /exec).
+  const APPLI = 'https://script.google.com/macros/s/AKfycbxhqsQh2TN1iFdpFFgH_YgD9qQRtsrkwJH9Hdnmj9kviV8bCFz3S18SqHecgZ8z_wig/exec';
+  const NOM = 'riyade_appareil';
+  function cle() {
+    try {
+      let k = localStorage.getItem(NOM);
+      if (!/^[0-9a-f]{64}$/.test(k || '')) {
+        k = Array.from(crypto.getRandomValues(new Uint8Array(32))).map((b) => b.toString(16).padStart(2, '0')).join('');
+        localStorage.setItem(NOM, k);
+      }
+      return k;
+    } catch (e) { return ''; }
+  }
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* facultatif */ }
+  const k = cle();
+  document.getElementById('appli').src = APPLI + '?lanceur=1' + (k ? '&appareil=' + k : '');
+  // « Se souvenir de cet appareil » décoché dans l'appli : la clé est oubliée, une nouvelle sera créée à la prochaine ouverture.
+  window.addEventListener('message', (ev) => {
+    if (!/\.googleusercontent\.com$/.test(new URL(ev.origin).hostname)) return;
+    if (ev.data && ev.data.riyade === 'oublier') { try { localStorage.removeItem(NOM); } catch (e) { /* rien */ } }
+  });
+</script>
 </body>
 </html>
